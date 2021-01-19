@@ -203,7 +203,7 @@ class Battery(object):
         # )
 
         self.prob += lpSum(
-            [ max(forecasts[i] - exports[i],0) if forecasts[i] >= 0 else max(abs(forecasts[i]) - imports[i],0) for i in idx[:-1] ]
+            [ max(forecasts[i] - exports[i],0)  for i in idx[:-1] ]
         )
 
         #  initial charge
