@@ -205,7 +205,7 @@ class Battery(object):
 
 
         self.prob += lpSum(
-            [ (forecasts[i] - (imports[i] + exports[i]))**2  for i in idx[:-1] ]
+            [ (forecasts[i] - (imports[i] + exports[i]))  for i in idx[:-1] ]
         )
 
         #  initial charge
