@@ -203,8 +203,8 @@ class Battery(object):
         # )
 
 
-        forecast_imports = [abs(x) if x < 0 else 0 for x in forecasts]
-        forecast_exports = [x if x > 0 else 0 for x in forecasts]
+        forecast_imports = [abs(x) if x < 0 else 0 for x in forecasts[:-1]]
+        forecast_exports = [x if x > 0 else 0 for x in forecasts[:-1]]
 
         self.prob += lpSum(
             [(forecast_imports[i] - imports[i]) + (forecast_exports[i] - exports[i]) for i in idx[:-1]]
