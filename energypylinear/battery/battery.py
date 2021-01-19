@@ -205,7 +205,7 @@ class Battery(object):
 
 
         self.prob += lpSum(
-            [ (forecasts[i] - (imports[i] + exports[i]))  for i in idx[:-1] ]
+            [ (forecasts[i] - (imports[i] + exports[i])) * (forecasts[i] - (imports[i] + exports[i]))  for i in idx[:-1] ]
         )
 
         #  initial charge
@@ -235,7 +235,7 @@ class Battery(object):
 
         logger.info(json.dumps(opt_results))
 
-        self.info = self.generate_outputs(forecasts, forecasts, idx,
+        self.info = self.generate_outputs(prices, forecasts, idx,
                                           initial_charge)
 
         return self.info
