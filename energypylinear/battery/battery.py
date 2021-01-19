@@ -157,6 +157,87 @@ class Battery(object):
 
         return self.info
 
+    def optimize_dispatch(self, forecasts, initial_charge=0, timestep='5min'):
+        """Luke's addition - this function is based on the 'optimize' function above
+        It uses a different objective function to minimise shortfalls from the battery when needed for charge or discharge. 
+
+        forecasts         list [MWh]
+        initial_charge float [MWh]
+        timestep       str   5min, 1hr etc
+        """
+        self.prob = LpProblem('cost minimization', LpMinimize)
+
+        self.timestep = timestep
+        timestep_timedelta = parse_timedelta(timestep)
+        timestep_hours = timestep_timedelta.total_seconds() / (60*60)
+        self.step = 1 / timestep_hours
+        #  append a NaN onto the forecasts list to represent the price
+        #  during the last reported period, which is only used to give the
+        #  final charge, and not included in the optimization
+        forecasts = list(forecasts)
+        forecasts.append(None)
+
+
+        forecast_len = len(forecasts)
+
+        assert initial_charge <= self.capacity
+        assert initial_charge >= 0
+
+        #  used to index timesteps
+        idx = range(0, len(forecasts))
+
+        self.vars = self.setup_vars(idx)
+
+        imports = self.vars['imports']
+        exports = self.vars['exports']
+        charges = self.vars['charges']
+        losses = self.vars['losses']
+
+       
+        #  the objective function we are minimizing
+
+        # Old objective fn
+        # self.prob += lpSum( 
+        #     [imports[i] * forecasts[i] for i in idx[:-1]] +
+        #     [-(exports[i] - losses[i]) * forecasts[i] for i in idx[:-1]]
+        # )
+
+        self.prob += lpSum(
+            [ max(forecasts[i] - exports[i],0) if forecasts[i] > 0 else max(abs(forecasts[i]) - imports[i],0) for i in idx[:-1] ]
+        )
+
+        #  initial charge
+        self.prob += charges[0] == initial_charge
+
+        #  last item in the index isn't used because the last timestep only
+        #  represents the final charge level - no import or export is done
+        for i in idx[:-1]:
+            #  energy balance across two time periods
+            self.prob += charges[i + 1] == charges[i] + (imports[i] - exports[i]) / self.step
+
+            #  constrain battery charge level
+            self.prob += charges[i] <= self.capacity
+            self.prob += charges[i] >= 0
+
+            self.prob += losses[i] == exports[i] * (1 - self.efficiency)
+
+        print('starting linear program for {}'.format(self))
+        self.prob.solve()
+
+        opt_results = {
+            "name": "optimization_results",
+            "status": LpStatus[self.prob.status]
+        }
+
+        print('linear program for {} done - {}'.format(self, opt_results['status']))
+
+        logger.info(json.dumps(opt_results))
+
+        self.info = self.generate_outputs(prices, forecasts, idx,
+                                          initial_charge)
+
+        return self.info
+
     def calc_net(self, imp, exp, loss):
         """Calculate the Net, or None if inputs are None."""
         return imp - exp + loss
