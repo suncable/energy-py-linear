@@ -235,7 +235,7 @@ class Battery(object):
 
         logger.info(json.dumps(opt_results))
 
-        self.info = self.generate_outputs(prices, forecasts, idx,
+        self.info = self.generate_outputs(forecasts, forecasts, idx,
                                           initial_charge)
 
         return self.info
